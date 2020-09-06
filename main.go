@@ -17,10 +17,10 @@ import (
 )
 
 // ReadFiles read filenames from chanel ch and puts them on chanel output
-func ReadFiles(ch *chan string, cols []int, output *chan []Coord, wg *sync.WaitGroup) {
+func ReadFiles(ch *chan string, cols []int, output *chan []float32, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for s := range *ch {
-		ReadOneFile(s, output)
+		ReadOneFile(s, cols, output)
 		fmt.Printf("%s\n", s)
 	}
 	fmt.Printf("End of Jobs\n")
@@ -41,8 +41,8 @@ func ReadOneFile(fn string, cols []int, ch *chan []float32) {
 
 	var result []float32
 
+	buffer := make([]float32, len(cols), len(cols))
 	for scanner.Scan() {
-		buffer := make([]float32, len(cols), len(cols))
 		line := scanner.Text()
 		toks := strings.Split(line, ",")
 		for i, v := range cols {
@@ -56,21 +56,7 @@ func ReadOneFile(fn string, cols []int, ch *chan []float32) {
 			buffer[i] = float32(val)
 		}
 
-		/*
-			if parallax < 0. {
-				// https://astronomy.stackexchange.com/questions/26250/what-is-the-proper-interpretation-of-a-negative-parallax
-				continue
-			}
-			sra, cra := math.Sincos(ra * math.Pi / 180.0)
-			sdec, cdec := math.Sincos(dec * math.Pi / 180.0)
-			r := 1.58125074e-5 / (parallax / (1000 * 3600) * math.Pi / 180.)
-			x := r * cra * cdec
-			y := r * sra * cdec
-			z := r * sdec
-			c := Coord{Ra: float32(ra), Dec: float32(dec), X: float32(x), Y: float32(y), Z: float32(z)}
-			// println(x, y, z)
-		*/
-		result = append(result, c)
+		result = append(result, buffer...)
 	}
 	*ch <- result
 	return
@@ -79,7 +65,7 @@ func ReadOneFile(fn string, cols []int, ch *chan []float32) {
 func main() {
 	numArgs := len(os.Args)
 	var cols []int
-	for i := 1; i < numArgs; i++ {
+	for i := 2; i < numArgs; i++ {
 		icol, err := strconv.Atoi(os.Args[i])
 		if err != nil {
 			log.Fatal("columns not int")
@@ -97,14 +83,14 @@ func main() {
 	}
 	defer result.Close()
 
-	ch := make(chan []Coord)
+	ch := make(chan []float32)
 	count := 0
 
 	fileNameCh := make(chan string)
 	var wg sync.WaitGroup
 	end := make(chan int64)
 	// Writer
-	go func(ch *chan []Coord, end *chan int64) {
+	go func(ch *chan []float32, end *chan int64) {
 		var countResults int64
 		var countCluster int64
 		for coords := range *ch {

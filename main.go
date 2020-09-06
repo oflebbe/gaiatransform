@@ -20,18 +20,19 @@ import (
 
 // Coord Of the stars
 type Coord struct {
-	X float32
-	Y float32
-	Z float32
+	Ra  float32
+	Dec float32
+	X   float32
+	Y   float32
+	Z   float32
 }
 
 // ReadFiles read filenames from chanel ch and puts them on chanel output
 func ReadFiles(ch *chan string, output *chan []Coord, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for s := range *ch {
-		fmt.Printf("Starting %s\n", s)
 		ReadOneFile(s, output)
-		fmt.Printf("End %s\n", s)
+		fmt.Printf("%s\n", s)
 	}
 	fmt.Printf("End of Jobs\n")
 }
@@ -79,7 +80,7 @@ func ReadOneFile(fn string, ch *chan []Coord) {
 		x := r * cra * cdec
 		y := r * sra * cdec
 		z := r * sdec
-		c := Coord{X: float32(x), Y: float32(y), Z: float32(z)}
+		c := Coord{Ra: float32(ra), Dec: float32(dec), X: float32(x), Y: float32(y), Z: float32(z)}
 		// println(x, y, z)
 
 		result = append(result, c)
@@ -135,7 +136,6 @@ func main() {
 			continue
 		}
 		count++
-		fmt.Printf("Scheduled: %s\n", fi.Name())
 		fileNameCh <- filepath.Join(os.Args[1], fi.Name())
 	}
 	close(fileNameCh)
